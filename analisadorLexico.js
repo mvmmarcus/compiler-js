@@ -5,6 +5,9 @@ const {
   chavesTabelaTransicao,
   tabelaSimbolos,
   tabelaEstadosFinais,
+  actionSyntaticAnalyzer,
+  gramaticRules,
+  goToSyntaticAnalyzer,
 } = require("./tabelas");
 
 const {
@@ -25,16 +28,31 @@ const {
 
 const codigoFonte = fs.readFileSync("./codigoFonte.txt", "utf8");
 
+// lexical variables
 let estadoAtual = 0;
 let linhaArquivoFonte = 1;
 let colunaArquivoFonte = 1;
 let itemConcatenado = "";
 let posicao = 0;
 
+// syntatic variables
+let s = 0; // estado no topo da pilha
+let a = ""; // token
+let t = 0;
+let A = null;
+let beta = "";
+let betaSize = null;
+let action = "";
+let stack = [0]; // pilha
+let teste = 1;
 // ler cada caracter do codigo fonte
 for (let i = 0; i < codigoFonte.length + 1; i++) {
   posicao = i;
-  let token = {};
+  let token = {
+    classe: "",
+    lexema: "",
+    tipo: null,
+  };
   const caracter = codigoFonte[i];
   if (caracter) {
     token = scanner(caracter);
@@ -43,7 +61,34 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
     token = scanner("eof");
   }
 
-  if (token) console.log(token);
+  if (token) {
+    while (true) {
+      console.log({ token });
+
+      a = token.classe;
+      s = stack[stack.length - 1];
+      if (actionSyntaticAnalyzer[s][a]?.id === "s") {
+        action = actionSyntaticAnalyzer[s][a]?.action;
+        t = actionSyntaticAnalyzer[s][a]?.t;
+        stack.push(t);
+        break;
+      } else if (actionSyntaticAnalyzer[s][a]?.id === "r") {
+        action = actionSyntaticAnalyzer[s][a]?.action;
+        betaSize = gramaticRules[action]?.beta?.length;
+        stack = stack.slice(0, -betaSize);
+        t = stack[stack.length - 1];
+        A = gramaticRules[action]?.A;
+        beta = gramaticRules[action]?.beta;
+        if (!!goToSyntaticAnalyzer[t][A])
+          stack.push(goToSyntaticAnalyzer[t][A]);
+        console.log(`${A} -> ${beta}`);
+      } else if (actionSyntaticAnalyzer[s][a]?.id === "acc") {
+        action = actionSyntaticAnalyzer[s][a]?.action;
+        console.log(`${gramaticRules?.R1?.A} -> ${gramaticRules?.R1?.beta}`);
+        break;
+      }
+    }
+  }
 }
 
 // validar tokens

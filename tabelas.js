@@ -678,10 +678,64 @@ const chavesTabelaTransicao = [
   "\n",
 ];
 
+const gramaticRules = {
+  R1: {
+    A: "S'",
+    beta: "E",
+  },
+  R2: {
+    A: "E",
+    beta: "(T)",
+  },
+  R3: {
+    A: "T",
+    beta: "a",
+  },
+};
+
+const actionSyntaticAnalyzer = {
+  0: {
+    ab_p: { id: "s", action: "S2", t: 2 },
+  },
+  1: {
+    eof: { id: "acc", action: "Acc" },
+  },
+  2: {
+    id: { id: "s", action: "S3", t: 3 },
+  },
+  3: {
+    ab_p: { id: "r", action: "R3" },
+    fc_p: { id: "r", action: "R3" },
+    id: { id: "r", action: "R3" },
+    eof: { id: "r", action: "R3" },
+  },
+  4: {
+    fc_p: { id: "s", action: "S5", t: 5 },
+  },
+  5: {
+    ab_p: { id: "r", action: "R2" },
+    fc_p: { id: "r", action: "R2" },
+    id: { id: "r", action: "R2" },
+    eof: { id: "r", action: "R2" },
+  },
+};
+
+const goToSyntaticAnalyzer = {
+  0: {
+    E: 1,
+  },
+  2: {
+    T: 4,
+  },
+};
+
 module.exports = {
   tabelaTransicaoEstados,
   tabelaSimbolos,
   tabelaEstadosFinais,
   tabelaErrosPorEstado,
   chavesTabelaTransicao,
+  gramaticRules,
+  actionSyntaticAnalyzer,
+  goToSyntaticAnalyzer,
 };
