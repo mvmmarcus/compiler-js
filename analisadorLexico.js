@@ -44,7 +44,8 @@ let beta = "";
 let betaSize = null;
 let action = "";
 let stack = [0]; // pilha
-let teste = 1;
+let run = true;
+
 // ler cada caracter do codigo fonte
 for (let i = 0; i < codigoFonte.length + 1; i++) {
   posicao = i;
@@ -62,8 +63,8 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
   }
 
   if (token) {
-    while (true) {
-      console.log({ token });
+    while (run === true) {
+      // console.log({ token });
 
       a = token.classe;
       s = stack[stack.length - 1];
@@ -74,17 +75,26 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
         break;
       } else if (actionSyntaticAnalyzer[s][a]?.id === "r") {
         action = actionSyntaticAnalyzer[s][a]?.action;
-        betaSize = gramaticRules[action]?.beta?.length;
+        betaSize = gramaticRules[action]?.betaLenght;
         stack = stack.slice(0, -betaSize);
         t = stack[stack.length - 1];
         A = gramaticRules[action]?.A;
         beta = gramaticRules[action]?.beta;
+
         if (!!goToSyntaticAnalyzer[t][A])
           stack.push(goToSyntaticAnalyzer[t][A]);
+
         console.log(`${A} -> ${beta}`);
       } else if (actionSyntaticAnalyzer[s][a]?.id === "acc") {
-        action = actionSyntaticAnalyzer[s][a]?.action;
-        console.log(`${gramaticRules?.R1?.A} -> ${gramaticRules?.R1?.beta}`);
+        // action = actionSyntaticAnalyzer[s][a]?.action;
+        // console.log(`${gramaticRules?.R1?.A} -> ${gramaticRules?.R1?.beta}`);
+        run = false;
+        break;
+      } else {
+        const error = actionSyntaticAnalyzer[s]?.err;
+        console.log(
+          `syntatic error: ${error}, coluna: ${colunaArquivoFonte}, linha: ${linhaArquivoFonte}`
+        );
         break;
       }
     }
