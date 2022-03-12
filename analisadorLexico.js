@@ -5,9 +5,9 @@ const {
   chavesTabelaTransicao,
   tabelaSimbolos,
   tabelaEstadosFinais,
-  actionSyntaticAnalyzer,
-  gramaticRules,
-  goToSyntaticAnalyzer,
+  tabelaAcoes,
+  regrasGramatica,
+  tabelaDesvios,
 } = require("./tabelas");
 
 const {
@@ -28,22 +28,23 @@ const {
 
 const codigoFonte = fs.readFileSync("./codigoFonte.txt", "utf8");
 
-// lexical variables
+// variaveis lexico
 let estadoAtual = 0;
 let linhaArquivoFonte = 1;
 let colunaArquivoFonte = 1;
 let itemConcatenado = "";
 let posicao = 0;
 
-// syntatic variables
+// variaveis sintatico
 let s = 0; // estado no topo da pilha
 let a = ""; // token
 let t = 0;
 let A = null;
 let beta = "";
-let betaSize = null;
-let action = "";
+let tamanhoBeta = null;
+let acao = "";
 let stack = [0]; // pilha
+let erro = null;
 let run = true;
 
 // ler cada caracter do codigo fonte
@@ -64,37 +65,36 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
 
   if (token) {
     while (run === true) {
-      // console.log({ token });
+      if (token?.classe === "ERRO") break; // garantir que o sintatico não receba token do tipo erro
 
       a = token.classe;
       s = stack[stack.length - 1];
-      if (actionSyntaticAnalyzer[s][a]?.id === "s") {
-        action = actionSyntaticAnalyzer[s][a]?.action;
-        t = actionSyntaticAnalyzer[s][a]?.t;
+      if (tabelaAcoes[s][a]?.id === "s") {
+        acao = tabelaAcoes[s][a]?.acao;
+        t = tabelaAcoes[s][a]?.t;
         stack.push(t);
         break;
-      } else if (actionSyntaticAnalyzer[s][a]?.id === "r") {
-        action = actionSyntaticAnalyzer[s][a]?.action;
-        betaSize = gramaticRules[action]?.betaLenght;
-        stack = stack.slice(0, -betaSize);
+      } else if (tabelaAcoes[s][a]?.id === "r") {
+        acao = tabelaAcoes[s][a]?.acao;
+        tamanhoBeta = regrasGramatica[acao]?.tamanhoBeta;
+        stack = stack.slice(0, -tamanhoBeta);
         t = stack[stack.length - 1];
-        A = gramaticRules[action]?.A;
-        beta = gramaticRules[action]?.beta;
-
-        if (!!goToSyntaticAnalyzer[t][A])
-          stack.push(goToSyntaticAnalyzer[t][A]);
+        A = regrasGramatica[acao]?.A;
+        beta = regrasGramatica[acao]?.beta;
+        if (!!tabelaDesvios[t][A]) stack.push(tabelaDesvios[t][A]);
 
         console.log(`${A} -> ${beta}`);
-      } else if (actionSyntaticAnalyzer[s][a]?.id === "acc") {
-        // action = actionSyntaticAnalyzer[s][a]?.action;
-        // console.log(`${gramaticRules?.R1?.A} -> ${gramaticRules?.R1?.beta}`);
+      } else if (tabelaAcoes[s][a]?.id === "acc") {
         run = false;
         break;
       } else {
-        const error = actionSyntaticAnalyzer[s]?.err;
-        console.log(
-          `syntatic error: ${error}, coluna: ${colunaArquivoFonte}, linha: ${linhaArquivoFonte}`
-        );
+        const erroAtual = tabelaAcoes[s]?.erro;
+        if (erroAtual !== erro) {
+          erro = erroAtual;
+          console.log(
+            `Erro sintatico: ${erro}. Recebido: ${a}, na linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+          );
+        }
         break;
       }
     }
