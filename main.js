@@ -92,7 +92,7 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
         if (erroAtual !== erro) {
           erro = erroAtual;
           console.log(
-            `Erro sintatico: ${erro}. Recebido: ${a}, na linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+            `Erro sintatico: ${erro}, na linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
           );
         }
         break;

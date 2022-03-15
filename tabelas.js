@@ -882,7 +882,7 @@ const tabelaAcoes = {
   },
   2: {
     varinicio: { id: "s", acao: "S4", t: 4 },
-    erro: "Espera-se varincio",
+    erro: "Espera-se varinicio",
   },
   3: {
     id: { id: "s", acao: "S13", t: 13 },
