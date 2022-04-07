@@ -1,6 +1,6 @@
 const fs = require("fs");
 
-const {
+let {
   tabelaTransicaoEstados,
   chavesTabelaTransicao,
   tabelaSimbolos,
@@ -47,6 +47,223 @@ let stack = [0]; // pilha
 let erro = null;
 let run = true;
 
+// semantico
+let programaC =
+  "#include <stdio.h>\ntypedef char literal[256];\nvoid main(void)\n{\n   /*----Variaveis temporarias----*/\n"; // contém todo o conteúdo do arquivo programa.c
+let pilhaSemantico = [];
+let contadorVariavelTemp = 0;
+
+const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
+  const token = lexicoToken;
+
+  // console.log(`${acao}: `, { token, pilhaSemantico, tamanhoBeta });
+
+  const adicionaNoTopoDaPilha = (item, pilhaSemantico, tamanhoBeta = 1) => {
+    for (let index = 0; index < tamanhoBeta; index++) {
+      pilhaSemantico.pop();
+    }
+
+    pilhaSemantico.push(item);
+  };
+
+  const regras = {
+    R5: () => {
+      programaC = programaC + "\n\n\n";
+    },
+    R6: () => {
+      const D = token;
+      const TIPO = pilhaSemantico[pilhaSemantico.length - 3];
+      const id = pilhaSemantico[pilhaSemantico.length - 1];
+
+      if (!!TIPO?.tipo) {
+        adicionaNoTopoDaPilha(D, pilhaSemantico, tamanhoBeta);
+        programaC = programaC + id.lexema + "\n";
+      } else {
+        console.log(
+          `Erro: variável não declarada, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+        );
+      }
+    },
+    R7: () => {
+      const L = token;
+      const id = pilhaSemantico[pilhaSemantico.length - 1];
+
+      if (!!id?.tipo) {
+        tabelaSimbolos = tabelaSimbolos.map((item) => {
+          if (item?.lexema === id.lexema) {
+            return id;
+          }
+          return item;
+        });
+
+        adicionaNoTopoDaPilha(L, pilhaSemantico, tamanhoBeta);
+        programaC = programaC + id.lexema;
+      }
+    },
+    R8: () => {
+      let TIPO = token;
+      const inteiro = pilhaSemantico[pilhaSemantico.length - 1];
+      TIPO.tipo = inteiro.tipo;
+
+      adicionaNoTopoDaPilha(TIPO, pilhaSemantico, tamanhoBeta);
+      programaC = programaC + TIPO.tipo + " ";
+    },
+    R9: () => {
+      let TIPO = token;
+      const real = pilhaSemantico[pilhaSemantico.length - 1];
+      TIPO.tipo = real.tipo;
+
+      adicionaNoTopoDaPilha(TIPO, pilhaSemantico, tamanhoBeta);
+      programaC = programaC + TIPO.tipo + " ";
+    },
+    R10: () => {
+      let TIPO = token;
+      const literal = pilhaSemantico[pilhaSemantico.length - 1];
+      TIPO.tipo = literal.tipo;
+
+      adicionaNoTopoDaPilha(TIPO, pilhaSemantico, tamanhoBeta);
+      programaC = programaC + TIPO.tipo + " ";
+    },
+    R12: () => {
+      const ES = token;
+      const id = pilhaSemantico[pilhaSemantico.length - 2];
+
+      if (id?.tipo === "literal") {
+        adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
+        programaC = programaC + `scanf("%s", ${id.lexema});\n`;
+      } else if (id?.tipo === "inteiro") {
+        adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
+        programaC = programaC + `scanf("%d", &${id.lexema});\n`;
+      } else if (id?.tipo === "real") {
+        adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
+        programaC = programaC + `scanf("%lf", &${id.lexema});\n`;
+      } else {
+        console.log(
+          `Erro: variável não declarada, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+        );
+      }
+    },
+    R13: () => {
+      const ES = token;
+      const ARG = pilhaSemantico[pilhaSemantico.length - 2];
+
+      adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
+      programaC = programaC + `printf(${ARG?.lexema});\n`;
+    },
+    R14: () => {
+      let ARG = token;
+      const lit = pilhaSemantico[pilhaSemantico.length - 1];
+
+      ARG = lit;
+      adicionaNoTopoDaPilha(ARG, pilhaSemantico, tamanhoBeta);
+    },
+    R18: () => {
+      const id = pilhaSemantico[pilhaSemantico.length - 4];
+      const rcb = pilhaSemantico[pilhaSemantico.length - 3];
+      const LD = pilhaSemantico[pilhaSemantico.length - 2];
+
+      let CMD = token;
+
+      if (!!id?.tipo) {
+        if (id?.tipo === LD?.tipo) {
+          adicionaNoTopoDaPilha(CMD, pilhaSemantico, tamanhoBeta);
+          programaC =
+            programaC + `${id?.lexema} ${rcb?.lexema} ${LD?.lexema};\n`;
+        } else {
+          console.log(
+            `Erro: tipos diferentes para atribuição, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+          );
+        }
+      } else {
+        console.log(
+          `Erro: variável não declarada, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+        );
+      }
+    },
+    R19: () => {
+      const OPRD1 = pilhaSemantico[pilhaSemantico.length - 3];
+      const OPRD2 = pilhaSemantico[pilhaSemantico.length - 1];
+      const opm = pilhaSemantico[pilhaSemantico.length - 2];
+      let LD = token;
+
+      if (OPRD1?.tipo === OPRD2?.tipo && OPRD1?.tipo !== "literal") {
+        const Tx = `T${contadorVariavelTemp}`;
+        LD.lexema = Tx;
+        LD.tipo = OPRD1?.tipo;
+
+        adicionaNoTopoDaPilha(LD, pilhaSemantico, tamanhoBeta);
+        programaC =
+          programaC +
+          `${Tx} = ${OPRD1?.lexema} ${opm?.lexema} ${OPRD2?.lexema};\n`;
+        contadorVariavelTemp++;
+      } else {
+        console.log(
+          `Erro: operandos com tipos incompatíveis, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+        );
+      }
+    },
+    R21: () => {
+      let OPRD = token;
+      const id = pilhaSemantico[pilhaSemantico.length - 1];
+
+      if (!!id?.tipo) {
+        OPRD = id;
+        adicionaNoTopoDaPilha(OPRD, pilhaSemantico, tamanhoBeta);
+      } else {
+        console.log(
+          `Erro: variável não declarada, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+        );
+      }
+    },
+    R22: () => {
+      let OPRD = token;
+      const num = pilhaSemantico[pilhaSemantico.length - 1];
+
+      OPRD = num;
+      adicionaNoTopoDaPilha(OPRD, pilhaSemantico, tamanhoBeta);
+    },
+    R24: () => {
+      const COND = token;
+
+      programaC = programaC + `}\n`;
+      adicionaNoTopoDaPilha(COND, pilhaSemantico, tamanhoBeta);
+    },
+    R25: () => {
+      const CAB = token;
+      const EXP_R = pilhaSemantico[pilhaSemantico.length - 3];
+
+      programaC = programaC + `if (${EXP_R?.lexema}) {\n`;
+      adicionaNoTopoDaPilha(CAB, pilhaSemantico, tamanhoBeta);
+    },
+    R26: () => {
+      const OPRD1 = pilhaSemantico[pilhaSemantico.length - 3];
+      const OPRD2 = pilhaSemantico[pilhaSemantico.length - 1];
+      const opr = pilhaSemantico[pilhaSemantico.length - 2];
+      let EXP_R = token;
+
+      if (OPRD1?.tipo === OPRD2?.tipo) {
+        const Tx = `T${contadorVariavelTemp}`;
+        EXP_R.lexema = Tx;
+        adicionaNoTopoDaPilha(EXP_R, pilhaSemantico, tamanhoBeta);
+        programaC =
+          programaC +
+          `${Tx} = ${OPRD1?.lexema} ${opr?.lexema} ${OPRD2?.lexema};\n`;
+        contadorVariavelTemp++;
+      } else {
+        console.log(
+          `Erro: operandos com tipos incompatíveis, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+        );
+      }
+    },
+  };
+
+  const executaRegra = regras[acao];
+
+  if (executaRegra) {
+    executaRegra();
+  }
+};
+
 // ler cada caracter do codigo fonte
 for (let i = 0; i < codigoFonte.length + 1; i++) {
   posicao = i;
@@ -73,6 +290,11 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
         acao = tabelaAcoes[s][a]?.acao;
         t = tabelaAcoes[s][a]?.t;
         stack.push(t);
+        // console.log({ acao, token });
+
+        // semantico
+        // pilhaSemantico.push(token);
+
         break;
       } else if (tabelaAcoes[s][a]?.id === "r") {
         acao = tabelaAcoes[s][a]?.acao;
@@ -84,8 +306,20 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
         if (!!tabelaDesvios[t][A]) stack.push(tabelaDesvios[t][A]);
 
         console.log(`${A} -> ${beta}`);
+
+        // iniciar o semantico
+
+        // executaRegraSemantica(acao, token, tamanhoBeta);
       } else if (tabelaAcoes[s][a]?.id === "acc") {
         run = false;
+        // console.table(tabelaSimbolos);
+        // fs.writeFile("programa.c", programaC, (erro) => {
+        //   if (erro) {
+        //     console.log("erro ao criar o arquivo programa.c: ", erro);
+        //     throw erro;
+        //   }
+        //   console.log("arquivo programa.c criado!");
+        // });
         break;
       } else {
         const erroAtual = tabelaAcoes[s]?.erro;
@@ -175,6 +409,7 @@ function scanner(caracter) {
             tabelaEstadosFinais,
             proximoEstado // estado que o caracter atual leva
           );
+
           let token = buscaToken(tabelaSimbolos, itemConcatenado);
 
           // verificar se existe estado final para o caracter atual
@@ -196,7 +431,9 @@ function scanner(caracter) {
               if (token.classe === "comentario") return;
 
               // inserir na tabela de simbolos se token id
-              if (token.classe === "id") insereToken(tabelaSimbolos, token);
+              if (token.classe === "id") {
+                insereToken(tabelaSimbolos, token);
+              }
 
               return token;
             }
@@ -239,7 +476,9 @@ function scanner(caracter) {
             if (token.classe === "comentario") return;
 
             // inserir na tabela de simbolos se classe id e já não estiver inserido
-            if (token.classe === "id") insereToken(tabelaSimbolos, token);
+            if (token.classe === "id") {
+              insereToken(tabelaSimbolos, token);
+            }
 
             return token;
           }

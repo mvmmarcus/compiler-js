@@ -636,7 +636,7 @@ const tabelaErrosPorEstado = [
   },
 ];
 
-const tabelaSimbolos = [
+let tabelaSimbolos = [
   { classe: "inicio", lexema: "inicio", tipo: "inicio" },
   { classe: "varinicio", lexema: "varinicio", tipo: "varinicio" },
   { classe: "varfim", lexema: "varfim", tipo: "varfim" },
