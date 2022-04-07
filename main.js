@@ -49,14 +49,14 @@ let run = true;
 
 // semantico
 let programaC =
-  "#include <stdio.h>\ntypedef char literal[256];\nvoid main(void)\n{\n   /*----Variaveis temporarias----*/\n"; // contém todo o conteúdo do arquivo programa.c
+  "#include <stdio.h>\ntypedef char literal[256];\nvoid main(void)\n{\n/*----Variaveis temporarias----*/\n"; // contém todo o conteúdo do arquivo programa.c
+let variaveisTemporarias = "";
+let expressaoTxAuxiliar = "";
 let pilhaSemantico = [];
 let contadorVariavelTemp = 0;
 
 const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
   const token = lexicoToken;
-
-  // console.log(`${acao}: `, { token, pilhaSemantico, tamanhoBeta });
 
   const adicionaNoTopoDaPilha = (item, pilhaSemantico, tamanhoBeta = 1) => {
     for (let index = 0; index < tamanhoBeta; index++) {
@@ -106,7 +106,7 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
       TIPO.tipo = inteiro.tipo;
 
       adicionaNoTopoDaPilha(TIPO, pilhaSemantico, tamanhoBeta);
-      programaC = programaC + TIPO.tipo + " ";
+      programaC = programaC + "int" + " "; // conversão para sintaxe da linguagem C
     },
     R9: () => {
       let TIPO = token;
@@ -114,7 +114,7 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
       TIPO.tipo = real.tipo;
 
       adicionaNoTopoDaPilha(TIPO, pilhaSemantico, tamanhoBeta);
-      programaC = programaC + TIPO.tipo + " ";
+      programaC = programaC + "double" + " "; // conversão para sintaxe da linguagem C
     },
     R10: () => {
       let TIPO = token;
@@ -130,7 +130,7 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
 
       if (id?.tipo === "literal") {
         adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
-        programaC = programaC + `scanf("%s", ${id.lexema});\n`;
+        programaC = programaC + `scanf("%s", &${id.lexema});\n`;
       } else if (id?.tipo === "inteiro") {
         adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
         programaC = programaC + `scanf("%d", &${id.lexema});\n`;
@@ -147,8 +147,21 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
       const ES = token;
       const ARG = pilhaSemantico[pilhaSemantico.length - 2];
 
-      adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
-      programaC = programaC + `printf(${ARG?.lexema});\n`;
+      if (ARG?.classe === "id") {
+        if (ARG?.tipo === "literal") {
+          adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
+          programaC = programaC + `printf("%s", ${ARG?.lexema});\n`;
+        } else if (ARG?.tipo === "inteiro") {
+          adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
+          programaC = programaC + `printf("%d", ${ARG?.lexema});\n`;
+        } else if (ARG?.tipo === "real") {
+          adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
+          programaC = programaC + `printf("%lf", ${ARG?.lexema});\n`;
+        }
+      } else {
+        adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
+        programaC = programaC + `printf(${ARG?.lexema});\n`;
+      }
     },
     R14: () => {
       let ARG = token;
@@ -157,9 +170,28 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
       ARG = lit;
       adicionaNoTopoDaPilha(ARG, pilhaSemantico, tamanhoBeta);
     },
+    R15: () => {
+      let ARG = token;
+      const num = pilhaSemantico[pilhaSemantico.length - 1];
+
+      ARG = num;
+      adicionaNoTopoDaPilha(ARG, pilhaSemantico, tamanhoBeta);
+    },
+    R16: () => {
+      let ARG = token;
+      const id = pilhaSemantico[pilhaSemantico.length - 1];
+
+      if (!!id?.tipo) {
+        ARG = id;
+        adicionaNoTopoDaPilha(ARG, pilhaSemantico, tamanhoBeta);
+      } else {
+        console.log(
+          `Erro: variável não declarada, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+        );
+      }
+    },
     R18: () => {
       const id = pilhaSemantico[pilhaSemantico.length - 4];
-      const rcb = pilhaSemantico[pilhaSemantico.length - 3];
       const LD = pilhaSemantico[pilhaSemantico.length - 2];
 
       let CMD = token;
@@ -167,8 +199,7 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
       if (!!id?.tipo) {
         if (id?.tipo === LD?.tipo) {
           adicionaNoTopoDaPilha(CMD, pilhaSemantico, tamanhoBeta);
-          programaC =
-            programaC + `${id?.lexema} ${rcb?.lexema} ${LD?.lexema};\n`;
+          programaC = programaC + `${id?.lexema} = ${LD?.lexema};\n`;
         } else {
           console.log(
             `Erro: tipos diferentes para atribuição, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
@@ -195,12 +226,20 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
         programaC =
           programaC +
           `${Tx} = ${OPRD1?.lexema} ${opm?.lexema} ${OPRD2?.lexema};\n`;
+        variaveisTemporarias = variaveisTemporarias + `int ${Tx};\n`;
         contadorVariavelTemp++;
       } else {
         console.log(
           `Erro: operandos com tipos incompatíveis, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
         );
       }
+    },
+    R20: () => {
+      let LD = token;
+      const OPRD = pilhaSemantico[pilhaSemantico.length - 1];
+
+      LD = OPRD;
+      adicionaNoTopoDaPilha(LD, pilhaSemantico, tamanhoBeta);
     },
     R21: () => {
       let OPRD = token;
@@ -244,16 +283,38 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
       if (OPRD1?.tipo === OPRD2?.tipo) {
         const Tx = `T${contadorVariavelTemp}`;
         EXP_R.lexema = Tx;
+
         adicionaNoTopoDaPilha(EXP_R, pilhaSemantico, tamanhoBeta);
-        programaC =
-          programaC +
-          `${Tx} = ${OPRD1?.lexema} ${opr?.lexema} ${OPRD2?.lexema};\n`;
+        const expressaoTx = `${Tx} = ${OPRD1?.lexema} ${opr?.lexema} ${OPRD2?.lexema}`;
+
+        if (expressaoTx === "T5 = B < 5") {
+          expressaoTxAuxiliar = expressaoTx + ";";
+        }
+
+        programaC = programaC + `${expressaoTx}\n`;
+        variaveisTemporarias = variaveisTemporarias + `bool ${Tx};\n`;
         contadorVariavelTemp++;
       } else {
         console.log(
           `Erro: operandos com tipos incompatíveis, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
         );
       }
+    },
+    R33: () => {
+      const CABR = token;
+      const EXP_R = pilhaSemantico[pilhaSemantico.length - 2];
+
+      if (!!EXP_R?.lexema) {
+        programaC = programaC + `while (${EXP_R?.lexema}) do {\n`;
+        adicionaNoTopoDaPilha(CABR, pilhaSemantico, tamanhoBeta);
+      }
+    },
+    R37: () => {
+      // fimrepita => fim do laço de repetição (while)
+      const CP_R = token;
+
+      programaC = programaC + `${expressaoTxAuxiliar}\n` + `}\n`;
+      adicionaNoTopoDaPilha(CP_R, pilhaSemantico, tamanhoBeta);
     },
   };
 
@@ -290,10 +351,9 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
         acao = tabelaAcoes[s][a]?.acao;
         t = tabelaAcoes[s][a]?.t;
         stack.push(t);
-        // console.log({ acao, token });
 
         // semantico
-        // pilhaSemantico.push(token);
+        pilhaSemantico.push(token);
 
         break;
       } else if (tabelaAcoes[s][a]?.id === "r") {
@@ -308,18 +368,27 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
         console.log(`${A} -> ${beta}`);
 
         // iniciar o semantico
-
-        // executaRegraSemantica(acao, token, tamanhoBeta);
+        executaRegraSemantica(acao, token, tamanhoBeta);
       } else if (tabelaAcoes[s][a]?.id === "acc") {
         run = false;
-        // console.table(tabelaSimbolos);
-        // fs.writeFile("programa.c", programaC, (erro) => {
-        //   if (erro) {
-        //     console.log("erro ao criar o arquivo programa.c: ", erro);
-        //     throw erro;
-        //   }
-        //   console.log("arquivo programa.c criado!");
-        // });
+        console.table(tabelaSimbolos);
+
+        // adição das variáveis temporárias logo após o comentário: *----Variaveis temporarias----*
+        programaC = programaC.replace(
+          "/*----Variaveis temporarias----*/\n",
+          `/*----Variaveis temporarias----*/\n${variaveisTemporarias}\n`
+        );
+
+        // fechamento do bloco main (necessário porque o inicio foi adicionado "na mão")
+        programaC = programaC + "}";
+
+        fs.writeFile("programa.c", programaC, (erro) => {
+          if (erro) {
+            console.log("erro ao criar o arquivo programa.c: ", erro);
+            throw erro;
+          }
+          console.log("arquivo programa.c criado!");
+        });
         break;
       } else {
         const erroAtual = tabelaAcoes[s]?.erro;
