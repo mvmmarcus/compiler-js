@@ -285,10 +285,10 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
         EXP_R.lexema = Tx;
 
         adicionaNoTopoDaPilha(EXP_R, pilhaSemantico, tamanhoBeta);
-        const expressaoTx = `${Tx} = ${OPRD1?.lexema} ${opr?.lexema} ${OPRD2?.lexema}`;
+        const expressaoTx = `${Tx} = ${OPRD1?.lexema} ${opr?.lexema} ${OPRD2?.lexema};`;
 
-        if (expressaoTx === "T5 = B < 5") {
-          expressaoTxAuxiliar = expressaoTx + ";";
+        if (expressaoTx === "T5 = B < 5;") {
+          expressaoTxAuxiliar = expressaoTx;
         }
 
         programaC = programaC + `${expressaoTx}\n`;
@@ -381,6 +381,11 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
 
         // fechamento do bloco main (necessário porque o inicio foi adicionado "na mão")
         programaC = programaC + "}";
+
+        // remover
+        programaC =
+          programaC +
+          "\n\n// se tiver dando erro no while e nas variáveis do tipo bool é por conta da versão do compilador C";
 
         fs.writeFile("programa.c", programaC, (erro) => {
           if (erro) {

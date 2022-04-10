@@ -23,9 +23,9 @@ printf("Digite B:");
 scanf("%d", &B);
 printf("Digite A:");
 scanf("%s", &A);
-T0 = B > 2
+T0 = B > 2;
 if (T0) {
-T1 = B <= 4
+T1 = B <= 4;
 if (T1) {
 printf("B esta entre 2 e 4");
 }
@@ -38,7 +38,7 @@ T4 = B + 3;
 B = T4;
 D = B;
 C = 5.0;
-T5 = B < 5
+T5 = B < 5;
 while (T5) do {
 T6 = B + 2;
 printf("%lf", C);
@@ -53,3 +53,5 @@ printf("%lf", C);
 printf("\n");
 printf("%s", A);
 }
+
+// se tiver dando erro no while e nas variáveis do tipo bool é por conta da versão do compilador C
