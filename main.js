@@ -49,7 +49,7 @@ let run = true;
 
 // semantico
 let programaC =
-  "#include <stdio.h>\ntypedef char literal[256];\nvoid main(void)\n{\n/*----Variaveis temporarias----*/\n"; // contém todo o conteúdo do arquivo programa.c
+  "#include <stdio.h>\n#include <stdbool.h>\ntypedef char literal[256];\nvoid main(void)\n{\n/*----Variaveis temporarias----*/\n"; // contém todo o conteúdo do arquivo programa.c
 let variaveisTemporarias = "";
 let expressaoTxAuxiliar = "";
 let pilhaSemantico = [];
@@ -98,6 +98,10 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
 
         adicionaNoTopoDaPilha(L, pilhaSemantico, tamanhoBeta);
         programaC = programaC + id.lexema;
+      } else {
+        console.log(
+          `Erro: variável não declarada, linha: ${linhaArquivoFonte}, coluna: ${colunaArquivoFonte}`
+        );
       }
     },
     R8: () => {
@@ -130,7 +134,7 @@ const executaRegraSemantica = (acao = "", lexicoToken, tamanhoBeta = 1) => {
 
       if (id?.tipo === "literal") {
         adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
-        programaC = programaC + `scanf("%s", &${id.lexema});\n`;
+        programaC = programaC + `scanf("%s", ${id.lexema});\n`;
       } else if (id?.tipo === "inteiro") {
         adicionaNoTopoDaPilha(ES, pilhaSemantico, tamanhoBeta);
         programaC = programaC + `scanf("%d", &${id.lexema});\n`;
@@ -371,29 +375,28 @@ for (let i = 0; i < codigoFonte.length + 1; i++) {
         executaRegraSemantica(acao, token, tamanhoBeta);
       } else if (tabelaAcoes[s][a]?.id === "acc") {
         run = false;
-        console.table(tabelaSimbolos);
 
         // adição das variáveis temporárias logo após o comentário: *----Variaveis temporarias----*
         programaC = programaC.replace(
           "/*----Variaveis temporarias----*/\n",
-          `/*----Variaveis temporarias----*/\n${variaveisTemporarias}\n`
+          `/*----Variaveis temporarias----*/\n${variaveisTemporarias}/*------------------------------*/\n`
         );
+
+        programaC = programaC.replace("\n\n\n", "");
 
         // fechamento do bloco main (necessário porque o inicio foi adicionado "na mão")
         programaC = programaC + "}";
 
-        // remover
-        programaC =
-          programaC +
-          "\n\n// se tiver dando erro no while e nas variáveis do tipo bool é por conta da versão do compilador C";
+        if (!erro) {
+          fs.writeFile("programa.c", programaC, (erro) => {
+            if (erro) {
+              console.log("erro ao criar o arquivo programa.c: ", erro);
+              throw erro;
+            }
+            console.log("arquivo programa.c criado!");
+          });
+        }
 
-        fs.writeFile("programa.c", programaC, (erro) => {
-          if (erro) {
-            console.log("erro ao criar o arquivo programa.c: ", erro);
-            throw erro;
-          }
-          console.log("arquivo programa.c criado!");
-        });
         break;
       } else {
         const erroAtual = tabelaAcoes[s]?.erro;
